@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Jet Space Racing - 360 Battle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+#menuScreen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at center, #0a0a1a 0%, #000 80%);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  z-index: 3000; color: white; font-family: 'Orbitron', sans-serif;
+}
+
+/* --- Coin Display with Image --- */
+#menuCoinDisplay {
+  position: absolute; top: 25px; right: 25px;
+  padding: 10px 20px; background: rgba(0, 0, 0, 0.6); /* Background thoda dark kiya highlight ke liye */
+  border: 2px solid #ff0; border-radius: 15px;
+  color: #ff0; font-weight: bold; font-size: 1.5rem; /* Text size thoda bada */
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  z-index: 3500; display: flex; align-items: center; gap: 12px;
+}
+
+/* Coin Image Styling - BIGGER & FIXED */
+.coin-img {
+  width: 40px; height: 40px; /* Bada size */
+  object-fit: contain;
+  /* Blend mode hata diya jo weird lag raha tha */
+}
+
+#gameTitle {
+  font-size: clamp(3rem, 8vw, 8rem);
+  background: linear-gradient(45deg, #0ff, #f0f, #ff0, #0f0);
+  background-size: 400% 400%; -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; animation: titleGlow 3s ease-in-out infinite alternate;
+  text-shadow: 0 0 30px #0ff; margin-bottom: 3rem; letter-spacing: 0.1em;
+}
+@keyframes titleGlow { 0% { background-position: 0% 50%; filter: hue-rotate(0deg); } 100% { background-position: 100% 50%; filter: hue-rotate(360deg); } }
+.menuBtn {
+  width: 280px; height: 70px; margin: 15px;
+  background: linear-gradient(45deg, rgba(0,255,255,0.2), rgba(255,0,255,0.2));
+  border: 2px solid transparent; border-radius: 50px; color: white; font-size: 1.4rem; font-weight: 700;
+  cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; backdrop-filter: blur(10px);
+}
+#startBtn { background: linear-gradient(45deg, #0ff, #00f); }
+#shopBtn { background: linear-gradient(45deg, #ff0, #f80); }
+#exitBtn { background: linear-gradient(45deg, #f00, #800); }
+#shopDialog {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+  padding: 20px 40px; border-radius: 15px; font-family: 'Orbitron', sans-serif;
+  font-weight: bold; font-size: 1.3rem; z-index: 5000; text-align: center;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; border: 3px solid;
+}
+#shopDialog.active { transform: translate(-50%, -50%) scale(1); }
+.dialog-red { background: rgba(150, 0, 0, 0.9); color: #fff; border-color: #f00; box-shadow: 0 0 30px #f00; }
+.dialog-green { background: rgba(0, 100, 0, 0.9); color: #fff; border-color: #0f0; box-shadow: 0 0 30px #0f0; }
+#shopScreen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at center, #0a0a1a 0%, #000 80%);
+  display: none; flex-direction: column; justify-content: center; align-items: center;
+  z-index: 3100; color: white; font-family: 'Orbitron', sans-serif; padding: 20px;
+}
+.shopItem {
+  width: 240px; background: rgba(255,255,255,0.05); border: 2px solid #0ff;
+  border-radius: 20px; padding: 18px; text-align: center; transition: all 0.3s;
+}
+.shopItem button { width: 100%; padding: 12px; border: none; border-radius: 30px; color: white; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
+.btn-buy { background: linear-gradient(45deg, #0f0, #0a0); }
+.btn-selected { background: #28a745 !important; }
+body { margin: 0; overflow: hidden; font-family: 'Orbitron', sans-serif; background: #000; touch-action: none; }
+#gameContainer { width: 100vw; height: 100vh; position: relative; overflow: hidden; display: none; }
+#game { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+.hud{position:absolute;top:15px;left:15px;z-index:1000;}
+#score{padding:12px 22px;color:#0ff;background:rgba(0,255,255,0.15);border:1px solid #0ff;border-radius:10px;}
+#healthBar{width:170px;height:16px;background:rgba(255,0,0,0.2);border-radius:10px;overflow:hidden;border:1px solid #f00;margin-top:8px;}
+#healthFill{height:100%;background:#f00;transition:width 0.2s;}
+#manaBar{width:170px;height:12px;background:rgba(0,0,255,0.2);border-radius:10px;overflow:hidden;border:1px solid #00f;margin-top:5px;}
+#manaFill{height:100%;background:#00f;transition:width 0.1s;}
+#pauseBtn { position: absolute; top: 15px; right: 15px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(45deg, #ff0, #f80); color: white; font-size: 18px; font-weight: bold; border: 3px solid #fff; cursor: pointer; z-index: 1500; display: none; }
+#coinHUD { position: absolute; top: 15px; right: 85px; z-index: 1000; padding: 12px 22px; color: #ff0; background: rgba(255,215,0,0.15); border: 1px solid #ff0; border-radius: 10px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+
+.particle {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%; pointer-events: none; z-index: 450;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.slim-jet{position:absolute;width:48px;height:85px;}
+.slim-fuselage{position:absolute;left:0;top:0;width:100%;height:100%;background:#333;clip-path:polygon(50% 0%,70% 10%,78% 20%,75% 80%,50% 95%,25% 80%,22% 20%,30% 10%);}
+.slim-main-wings{position:absolute;width:130%;height:48%;left:-15%;top:26%;background:#444;clip-path:polygon(10% 0%,90% 0%,95% 50%,5% 50%);}
+.slim-canards{position:absolute;width:65%;height:10%;left:17%;top:5%;background:#555;clip-path:polygon(10% 30%,40% 30%,45% 60%,30% 70%,15% 70%);}
+.slim-tail-left{position:absolute;width:14%;height:28%;left:3%;top:20%;background:#333;clip-path:polygon(0% 0%,80% 0%,100% 70%,40% 100%);transform:skewY(-15deg);}
+.slim-tail-right{position:absolute;width:14%;height:28%;right:3%;top:20%;background:#333;clip-path:polygon(20% 0%,100% 0%,70% 70%,0% 100%);transform:skewY(15deg);}
+.slim-engines{position:absolute;bottom:-8px;left:23%;width:54%;height:14px;background:#c00;clip-path:polygon(10% 0%,90% 0%,95% 80%,85% 100%,15% 100%,5% 80%);}
+.slim-canopy{position:absolute;left:30%;top:12%;width:40%;height:12px;background:#09f;clip-path:polygon(0% 0%,100% 0%,85% 90%,15% 90%);border-radius:50% 50% 40% 40%;}
+.player .slim-main-wings{background:#0cc;}
+.enemy .slim-main-wings{background:#aa0;}
+.skin-blue .slim-fuselage { background: #2266ff; }
+.skin-red .slim-fuselage { background: #c00; }
+.skin-purple .slim-fuselage { background: #a0f; }
+.bullet{position:absolute;width:4px;height:14px;background:#0ff;border-radius:2px;}
+#joystickBase{position:fixed;bottom:25px;left:25px;width:100px;height:100px;background:rgba(255,255,255,0.15);border-radius:50%;z-index:1200;}
+#joystickStick{position:absolute;width:50px;height:50px;background:rgba(0,255,255,0.6);border-radius:50%;left:25px;top:25px;transition:0.1s;}
+#fireBtn{position:fixed;bottom:35px;right:35px;width:80px;height:80px;border-radius:50%;background:#f44;color:white;font-size:18px;font-weight:bold;display:flex;justify-content:center;align-items:center;z-index:1400;border:3px solid #fff;cursor:pointer;}
+.abilityBtn { position: fixed !important; width: 65px !important; height: 65px !important; border-radius: 50% !important; display: flex !important; justify-content: center !important; align-items: center !important; color: white !important; font-size: 16px !important; z-index: 1600 !important; cursor: pointer !important; border: 3px solid rgba(255,255,255,0.8) !important; }
+#ab1 { background: #f44 !important; bottom: 140px !important; left: 35px !important; }
+#kamehameha { position: absolute; width: 0; height: 12px; background: linear-gradient(90deg, #f00, #ff4, #f80, #f00); border-radius: 6px; box-shadow: 0 0 40px #f00; z-index: 500; opacity: 0; pointer-events: none; transform-origin: left center; }
+#gameOverScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,0,40,0.9)); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; color: white; text-align: center; padding: 2rem; }
+#gameOverTitle { font-size: clamp(4rem, 12vw, 10rem); color: #f00; text-shadow: 0 0 30px #f00; margin-bottom: 1rem; animation: shake 0.5s infinite; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+#restartBtn, #menuBtn { width: 250px; height: 65px; border: none; border-radius: 40px; color: white; font-size: 1.5rem; cursor: pointer; margin: 1rem; transition: 0.3s; }
+#restartBtn { background: linear-gradient(45deg, #f00, #800); }
+#menuBtn { background: linear-gradient(45deg, #0ff, #00a); }
+</style>
+</head>
+<body>
+<audio id="bgMusic" loop><source src="Assets/Background.mp3" type="audio/mpeg"></audio>
+<audio id="clickSound"><source src="Assets/Clicking.mp3" type="audio/mpeg"></audio>
+<audio id="shootSound"><source src="Assets/Shoot.mp3" type="audio/mpeg"></audio>
+<audio id="noMoneySound"><source src="Assets/No Money.mp3" type="audio/mpeg"></audio>
+<audio id="purchasedSound"><source src="Assets/Purchased.mp3" type="audio/mpeg"></audio>
+<audio id="laserSound"><source src="Assets/Laser.mp3" type="audio/mpeg"></audio>
+<audio id="gameOverSound"><source src="Assets/Over.mp3" type="audio/mpeg"></audio>
+
+<div id="shopDialog">Message</div>
+
+<div id="menuScreen">
+  <div id="menuCoinDisplay">
+    <img src="Assets/Coin.png" alt="Coin" class="coin-img">
+    <span id="mainMenuCoinAmount">0</span>
+  </div>
+  <div id="gameTitle">SIMPLE JET</div>
+  <button class="menuBtn" id="startBtn">🚀 START BATTLE</button>
+  <button class="menuBtn" id="shopBtn">🛒 SHOP SKINS</button>
+  <button class="menuBtn" id="exitBtn">❌ EXIT</button>
+</div>
+
+<div id="shopScreen">
+  <div id="shopTitle">JET SKINS SHOP</div>
+  <div id="coinsDisplay">Coins: <span id="coinAmount">500</span></div>
+  <div class="shopGrid">
+    <div class="shopItem">
+      <div class="slim-jet skin-blue" style="margin:0 auto;position:relative;width:48px;height:85px;transform:scale(1.8);">
+        <div class="slim-fuselage"></div><div class="slim-main-wings"></div><div class="slim-canards"></div>
+        <div class="slim-tail-left"></div><div class="slim-tail-right"></div><div class="slim-engines"></div><div class="slim-canopy"></div>
+      </div>
+      <h3>Default Blue</h3><div class="price">Free</div><button id="btn-skin-blue">SELECT</button>
+    </div>
+    <div class="shopItem">
+      <div class="slim-jet skin-red" style="margin:0 auto;position:relative;width:48px;height:85px;transform:scale(1.8);">
+        <div class="slim-fuselage"></div><div class="slim-main-wings"></div><div class="slim-canards"></div>
+        <div class="slim-tail-left"></div><div class="slim-tail-right"></div><div class="slim-engines"></div><div class="slim-canopy"></div>
+      </div>
+      <h3>Red Flame</h3><div class="price">150 Coins</div><button id="btn-skin-red">BUY</button>
+    </div>
+    <div class="shopItem">
+      <div class="slim-jet skin-purple" style="margin:0 auto;position:relative;width:48px;height:85px;transform:scale(1.8);">
+        <div class="slim-fuselage"></div><div class="slim-main-wings"></div><div class="slim-canards"></div>
+        <div class="slim-tail-left"></div><div class="slim-tail-right"></div><div class="slim-engines"></div><div class="slim-canopy"></div>
+      </div>
+      <h3>Neon Purple</h3><div class="price">250 Coins</div><button id="btn-skin-purple">BUY</button>
+    </div>
+  </div>
+  <button id="shopBackBtn" class="menuBtn" style="margin-top: 2rem;">← BACK</button>
+</div>
+
+<div id="gameContainer">
+  <div id="game">
+    <div class="hud">
+      <div id="score">Score: 0</div>
+      <div id="healthBar"><div id="healthFill"></div></div>
+      <div id="manaBar"><div id="manaFill"></div></div>
+    </div>
+    <div id="coinHUD">
+      <img src="Assets/Coin.png" alt="Coin" class="coin-img" style="width:28px; height:28px;">
+      <span id="gameCoinAmount">0</span>
+    </div>
+    <button id="pauseBtn">⏸️</button>
+    <div class="slim-jet player skin-blue" id="playerJet">
+      <div class="slim-fuselage"></div><div class="slim-main-wings"></div><div class="slim-canards"></div>
+      <div class="slim-tail-left"></div><div class="slim-tail-right"></div><div class="slim-engines"></div><div class="slim-canopy"></div>
+    </div>
+    <div id="kamehameha"></div>
+    <div id="joystickBase"><div id="joystickStick"></div></div>
+    <div id="fireBtn">FIRE</div>
+    <div class="abilityBtn" id="ab1">A1</div>
+  </div>
+  <div id="gameOverScreen">
+    <div id="gameOverTitle">GAME OVER</div>
+    <div id="finalScore">Score: 0</div>
+    <div id="highScore">HIGH SCORE: 0</div>
+    <button id="restartBtn">🔄 RESTART</button>
+    <button id="menuBtn">🏠 MAIN MENU</button>
+  </div>
+</div>
+
+<script>
+// --- JavaScript same rakha h jese tumne manga tha ---
+let gameState = 'menu';
+let isPaused = false;
+let highScore = localStorage.getItem('jetHighScore') || 0;
+let score = 0, health = 100, px = window.innerWidth/2-24, py = window.innerHeight/2-42;
+let enemies = [], bullets = [], particles = [], angle = 0, lastHit = 0, mana = 100, maxMana = 100;
+let manaRegenRate = 0.013;
+let cooldownA1 = 0, canUseA1 = true;
+let kamehamehaActive = false, kamehamehaDuration = 0;
+let shootInt;
+let killCountForCoin = 0;
+
+const bgMusic = document.getElementById('bgMusic');
+const clickSound = document.getElementById('clickSound');
+const shootSound = document.getElementById('shootSound');
+const noMoneySound = document.getElementById('noMoneySound');
+const purchasedSound = document.getElementById('purchasedSound');
+const laserSound = document.getElementById('laserSound');
+const gameOverSound = document.getElementById('gameOverSound');
+
+bgMusic.volume = 0.1; clickSound.volume = 0.5; shootSound.volume = 0.4;
+noMoneySound.volume = 1.0; purchasedSound.volume = 0.8; laserSound.volume = 0.6; gameOverSound.volume = 0.8;
+
+function playMusic() { if (bgMusic.paused) bgMusic.play().catch(e => {}); }
+function playClick() { clickSound.currentTime = 0; clickSound.play().catch(e => {}); }
+function playShootSound() { shootSound.currentTime = 0; shootSound.play().catch(e => {}); }
+function playNoMoneySound() { noMoneySound.currentTime = 0; noMoneySound.play().catch(e => {}); }
+function playPurchasedSound() { purchasedSound.currentTime = 0; purchasedSound.play().catch(e => {}); }
+function playLaserSound() { laserSound.currentTime = 0; laserSound.play().catch(e => {}); }
+function playGameOverSound() { gameOverSound.currentTime = 0; gameOverSound.play().catch(e => {}); }
+
+let coins = parseInt(localStorage.getItem('jetCoins')) || 500;
+let currentSkin = localStorage.getItem('jetCurrentSkin') || 'skin-blue';
+let ownedSkins = JSON.parse(localStorage.getItem('jetOwnedSkins')) || ['skin-blue'];
+
+const menuScreen = document.getElementById('menuScreen');
+const shopScreen = document.getElementById('shopScreen');
+const gameContainer = document.getElementById('gameContainer');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const game = document.getElementById('game');
+const playerJet = document.getElementById('playerJet');
+const scoreEl = document.getElementById('score');
+const healthFill = document.getElementById('healthFill');
+const manaFill = document.getElementById('manaFill');
+const finalScore = document.getElementById('finalScore');
+const highScoreEl = document.getElementById('highScore');
+const pauseBtn = document.getElementById('pauseBtn');
+const kamehamehaBeam = document.getElementById('kamehameha');
+const coinAmount = document.getElementById('coinAmount');
+const gameCoinAmount = document.getElementById('gameCoinAmount');
+const mainMenuCoinAmount = document.getElementById('mainMenuCoinAmount');
+const coinHUD = document.getElementById('coinHUD');
+const shopDialog = document.getElementById('shopDialog');
+
+function updateCoinDisplay() { 
+  coinAmount.textContent = coins; 
+  gameCoinAmount.textContent = coins;
+  mainMenuCoinAmount.textContent = coins; 
+}
+
+function showShopDialog(msg, type) { shopDialog.textContent = msg; shopDialog.className = (type === 'error') ? 'dialog-red active' : 'dialog-green active'; setTimeout(() => shopDialog.classList.remove('active'), 2000); }
+
+function createParticles(x, y, color, count = 16) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.backgroundColor = color;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    const pAngle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 5.5 + 3;
+    p.dx = Math.cos(pAngle) * speed;
+    p.dy = Math.sin(pAngle) * speed - 1.5;
+    p.life = 1.0;
+    game.appendChild(p);
+    particles.push(p);
+  }
+}
+
+const skinsConfig = {
+    'skin-blue': { id: 'btn-skin-blue', price: 0 },
+    'skin-red': { id: 'btn-skin-red', price: 150 },
+    'skin-purple': { id: 'btn-skin-purple', price: 250 }
+};
+
+function updateShopButtons() {
+    for (let skinId in skinsConfig) {
+        let btn = document.getElementById(skinsConfig[skinId].id);
+        if (currentSkin === skinId) { btn.textContent = "SELECTED"; btn.className = "btn-selected"; btn.disabled = true; }
+        else if (ownedSkins.includes(skinId)) { btn.textContent = "SELECT"; btn.className = "btn-select"; btn.disabled = false; }
+        else { btn.textContent = "BUY"; btn.className = "btn-buy"; btn.disabled = false; }
+    }
+}
+
+Object.keys(skinsConfig).forEach(skinId => {
+    document.getElementById(skinsConfig[skinId].id).onclick = () => {
+        playMusic();
+        if (ownedSkins.includes(skinId)) {
+            playClick(); currentSkin = skinId;
+            localStorage.setItem('jetCurrentSkin', currentSkin);
+            applySkin(); updateShopButtons(); showShopDialog('Skin Equipped!', 'success');
+        } else {
+            let price = skinsConfig[skinId].price;
+            if (coins >= price) {
+                coins -= price; ownedSkins.push(skinId); currentSkin = skinId;
+                playPurchasedSound(); localStorage.setItem('jetCoins', coins);
+                localStorage.setItem('jetOwnedSkins', JSON.stringify(ownedSkins));
+                localStorage.setItem('jetCurrentSkin', currentSkin);
+                applySkin(); updateCoinDisplay(); updateShopButtons(); showShopDialog('Purchased!', 'success');
+            } else { playNoMoneySound(); showShopDialog('No coins!', 'error'); }
+        }
+    };
+});
+
+function applySkin() {
+  playerJet.classList.remove('skin-blue', 'skin-red', 'skin-purple');
+  playerJet.classList.add(currentSkin);
+}
+
+function clearGameObjects() {
+  enemies.forEach(e => e.remove()); 
+  bullets.forEach(b => b.remove()); 
+  particles.forEach(p => p.remove());
+  enemies = []; bullets = []; particles = [];
+  kamehamehaBeam.style.opacity = '0'; game.style.transform = 'translate(0,0)';
+  playerJet.style.display = 'block';
+}
+
+function resetGame() {
+  gameOverSound.pause(); gameOverSound.currentTime = 0;
+  clearGameObjects(); score = 0; health = 100; mana = 100;
+  px = window.innerWidth/2 - 24; py = window.innerHeight/2 - 42;
+  playerJet.style.left = px + 'px'; playerJet.style.top = py + 'px';
+  healthFill.style.width = '100%'; manaFill.style.width = '100%';
+  scoreEl.textContent = 'Score: 0'; cooldownA1 = 0; canUseA1 = true;
+  kamehamehaActive = false; if (shootInt) clearInterval(shootInt);
+  isPaused = false; pauseBtn.textContent = '⏸️'; applySkin(); updateCoinDisplay();
+}
+
+document.getElementById('startBtn').onclick = () => { playClick(); playMusic(); menuScreen.style.display = 'none'; gameContainer.style.display = 'block'; gameState = 'playing'; pauseBtn.style.display = 'block'; coinHUD.style.display = 'block'; resetGame(); };
+document.getElementById('shopBtn').onclick = () => { playClick(); playMusic(); menuScreen.style.display = 'none'; shopScreen.style.display = 'flex'; updateCoinDisplay(); updateShopButtons(); };
+document.getElementById('exitBtn').onclick = () => { playClick(); setTimeout(() => window.close(), 200); };
+document.getElementById('shopBackBtn').onclick = () => { playClick(); shopScreen.style.display = 'none'; menuScreen.style.display = 'flex'; updateCoinDisplay(); };
+pauseBtn.onclick = () => { playClick(); if (gameState === 'playing') { isPaused = !isPaused; pauseBtn.textContent = isPaused ? '▶️' : '⏸️'; } };
+document.getElementById('ab1').onclick = () => { if (!isPaused && gameState === 'playing') useA1(); };
+
+function useA1() { if (!canUseA1 || mana < 100) return; playLaserSound(); mana = 0; manaFill.style.width = '0%'; canUseA1 = false; cooldownA1 = 8; kamehamehaActive = true; kamehamehaDuration = 5; }
+
+let joystick = document.getElementById('joystickBase'), stick = document.getElementById('joystickStick'), dragging = false;
+joystick.addEventListener('pointerdown', e => { if (gameState === 'playing' && !isPaused) { e.preventDefault(); dragging = true; } });
+document.addEventListener('pointermove', e => {
+  if (!dragging || gameState !== 'playing' || isPaused) return;
+  let rect = joystick.getBoundingClientRect();
+  let dx = e.clientX - rect.left - 50, dy = e.clientY - rect.top - 50;
+  let dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
+  angle = Math.atan2(dy, dx);
+  stick.style.left = (50 + dist * Math.cos(angle) - 25) + 'px';
+  stick.style.top = (50 + dist * Math.sin(angle) - 25) + 'px';
+  px += Math.cos(angle) * dist * 0.3; py += Math.sin(angle) * dist * 0.3;
+  px = Math.max(0, Math.min(window.innerWidth - 48, px)); py = Math.max(0, Math.min(window.innerHeight - 85, py));
+  playerJet.style.left = px + 'px'; playerJet.style.top = py + 'px';
+  if (!kamehamehaActive) playerJet.style.transform = 'rotate(' + (angle + 1.57) + 'rad)';
+});
+document.addEventListener('pointerup', () => { dragging = false; stick.style.left = '25px'; stick.style.top = '25px'; });
+
+function shoot() {
+  if (gameState !== 'playing' || isPaused) return;
+  playShootSound();
+  let b = document.createElement('div'); b.className = 'bullet';
+  let cx = px + 24, cy = py + 42;
+  b.style.left = (cx + Math.cos(angle) * 20 - 2) + 'px'; b.style.top = (cy + Math.sin(angle) * 20 - 7) + 'px';
+  b.dx = Math.cos(angle) * 10; b.dy = Math.sin(angle) * 10;
+  bullets.push(b); game.appendChild(b);
+}
+document.getElementById('fireBtn').addEventListener('pointerdown', e => { if (gameState === 'playing' && !isPaused) { e.preventDefault(); shootInt = setInterval(shoot, 180); shoot(); } });
+document.addEventListener('pointerup', () => { if (shootInt) { clearInterval(shootInt); shootInt = null; } });
+
+function spawnEnemy() {
+  if (gameState !== 'playing' || isPaused || enemies.length > 6) return;
+  let e = document.createElement('div'); e.className = 'slim-jet enemy';
+  e.innerHTML = `<div class="slim-fuselage"></div><div class="slim-main-wings"></div><div class="slim-canards"></div><div class="slim-tail-left"></div><div class="slim-tail-right"></div><div class="slim-engines"></div><div class="slim-canopy"></div>`;
+  let c = Math.random();
+  if (c < 0.3) e.querySelector('.slim-fuselage').style.background = '#06f';
+  else if (c < 0.6) e.querySelector('.slim-fuselage').style.background = '#0a0';
+  e.speed = 2 + score * 0.0002;
+  let side = Math.floor(Math.random() * 4), ex, ey;
+  if (side === 0) { ex = Math.random() * (window.innerWidth - 48); ey = -100; }
+  else if (side === 1) { ex = Math.random() * (window.innerWidth - 48); ey = window.innerHeight + 100; }
+  else if (side === 2) { ex = -100; ey = Math.random() * (window.innerHeight - 85); }
+  else { ex = window.innerWidth + 100; ey = Math.random() * (window.innerHeight - 85); }
+  e.style.left = ex + 'px'; e.style.top = ey + 'px';
+  game.appendChild(e); enemies.push(e);
+}
+setInterval(spawnEnemy, 950);
+
+let lastTime = performance.now();
+function loop(currentTime) {
+  let delta = (currentTime - lastTime) / 1000;
+  if (delta > 0.1) delta = 0.1;
+  lastTime = currentTime;
+
+  if (gameState === 'playing' && !isPaused) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      let p = particles[i];
+      p.life -= 0.025;
+      if (p.life <= 0) { p.remove(); particles.splice(i, 1); continue; }
+      p.style.left = (parseFloat(p.style.left) + p.dx) + 'px';
+      p.style.top = (parseFloat(p.style.top) + p.dy) + 'px';
+      p.style.opacity = p.life;
+      p.style.transform = `scale(${p.life * 0.9})`;
+    }
+
+    if (mana < maxMana) { mana = Math.min(maxMana, mana + manaRegenRate * delta * 60); manaFill.style.width = (mana/maxMana*100)+'%'; }
+    if (!canUseA1) { cooldownA1 -= delta; if (cooldownA1 <= 0) { cooldownA1 = 0; canUseA1 = true; } }
+
+    if (kamehamehaActive) {
+      kamehamehaDuration -= delta;
+      if (kamehamehaDuration > 0) {
+        let spinAngle = (Date.now() * 0.02) % (Math.PI * 2);
+        playerJet.style.transform = `rotate(${(angle + 1.57 + spinAngle)}rad)`;
+        let barrelX = px + 24, barrelY = py + 42, beamLength = 450;
+        kamehamehaBeam.style.left = barrelX + 'px'; kamehamehaBeam.style.top = barrelY + 'px';
+        kamehamehaBeam.style.width = beamLength + 'px'; kamehamehaBeam.style.transform = `rotate(${angle + spinAngle}rad)`;
+        kamehamehaBeam.style.opacity = '1';
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          let e = enemies[i];
+          let ex = parseFloat(e.style.left) + 24, ey = parseFloat(e.style.top) + 42;
+          let dx = ex - barrelX, dy = ey - barrelY;
+          let distFromBeam = Math.abs(dx * Math.sin(angle + spinAngle) - dy * Math.cos(angle + spinAngle));
+          if (distFromBeam < 25 && Math.sqrt(dx*dx + dy*dy) < beamLength) {
+            createParticles(ex, ey, '#ff4400', 22);
+            e.remove(); enemies.splice(i, 1); score += 3; scoreEl.textContent = 'Score: ' + score;
+          }
+        }
+        let shake = Math.sin(Date.now() * 0.03) * 5;
+        game.style.transform = `translate(${shake}px, ${shake}px)`;
+      } else { 
+        kamehamehaActive = false; kamehamehaBeam.style.opacity = '0'; game.style.transform = 'translate(0,0)'; 
+      }
+    }
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let e = enemies[i];
+      let ex = parseFloat(e.style.left), ey = parseFloat(e.style.top);
+      let dx = px + 24 - ex, dy = py + 42 - ey;
+      let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      ex += dx / dist * e.speed; ey += dy / dist * e.speed;
+      e.style.left = ex + 'px'; e.style.top = ey + 'px';
+      let pr = playerJet.getBoundingClientRect(), er = e.getBoundingClientRect();
+      if (!(pr.bottom < er.top || pr.top > er.bottom || pr.right < er.left || pr.left > er.right)) {
+        if (Date.now() - lastHit > 600) { health -= 15; healthFill.style.width = health + '%'; lastHit = Date.now(); }
+        createParticles(ex+24, ey+42, '#ff8800', 10);
+        e.remove(); enemies.splice(i, 1);
+        if (health <= 0) {
+          createParticles(px+24, py+42, '#00ffff', 30);
+          playerJet.style.display = 'none';
+          gameState = 'gameover'; playGameOverSound();
+          if (score > highScore) { highScore = score; localStorage.setItem('jetHighScore', score); }
+          finalScore.textContent = 'Score: ' + score; highScoreEl.textContent = 'HIGH SCORE: ' + highScore;
+          gameOverScreen.style.display = 'flex'; coinHUD.style.display = 'none';
+          updateCoinDisplay();
+        }
+      }
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      let b = bullets[i];
+      b.style.left = (parseFloat(b.style.left) + b.dx) + 'px';
+      b.style.top = (parseFloat(b.style.top) + b.dy) + 'px';
+      if (parseFloat(b.style.left) < 0 || parseFloat(b.style.left) > window.innerWidth || parseFloat(b.style.top) < 0 || parseFloat(b.style.top) > window.innerHeight) { b.remove(); bullets.splice(i, 1); continue; }
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        let br = b.getBoundingClientRect(), er = enemies[j].getBoundingClientRect();
+        if (!(br.bottom < er.top || br.top > er.bottom || br.right < er.left || br.left > er.right)) {
+          let ex = parseFloat(enemies[j].style.left) + 24, ey = parseFloat(enemies[j].style.top) + 42;
+          createParticles(ex, ey, '#ffff44', 18);
+          b.remove(); bullets.splice(i, 1); 
+          enemies[j].remove(); enemies.splice(j, 1);
+          score++; scoreEl.textContent = 'Score: ' + score;
+          killCountForCoin++; 
+          if (killCountForCoin >= 3) { coins += 1; killCountForCoin = 0; localStorage.setItem('jetCoins', coins); updateCoinDisplay(); }
+          if (!kamehamehaActive) mana = Math.min(maxMana, mana + 15);
+          break;
+        }
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+
+document.getElementById('restartBtn').onclick = () => { playClick(); gameOverScreen.style.display = 'none'; resetGame(); gameState = 'playing'; coinHUD.style.display = 'block'; };
+document.getElementById('menuBtn').onclick = () => { playClick(); gameOverScreen.style.display = 'none'; gameContainer.style.display = 'none'; menuScreen.style.display = 'flex'; gameState = 'menu'; updateCoinDisplay(); };
+
+updateCoinDisplay();
+</script>
+</body>
+</html>
